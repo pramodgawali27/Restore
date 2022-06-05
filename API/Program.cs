@@ -14,8 +14,22 @@ builder.Services.AddDbContext<StoreContext>(
         opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnectionString"));
     }
 );
+builder.Services.AddCors();
 
 var app = builder.Build();
+var scope = app.Services.CreateScope();
+var context = scope.ServiceProvider.GetRequiredService<StoreContext>();
+var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+try{
+context.Database.Migrate();
+DbInitializer.Initializer(context);
+}catch(Exception e){
+    logger.LogError("err","error migrating data");
+}
+finally{
+    scope.Dispose();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -24,7 +38,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
+
+app.UseCors(opt =>{
+    opt.AllowAnyHeader().AllowAnyMethod().WithOrigins("http://localhost:3000");
+});
 
 app.UseAuthorization();
 
